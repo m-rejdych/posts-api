@@ -14,7 +14,7 @@ use diesel::prelude::*;
 type Result<T, E = rocket::response::Debug<diesel::result::Error>> = std::result::Result<T, E>;
 
 lazy_static! {
-    static ref RE_PASSWORD: Regex = Regex::new(r"^(?=.*\d).{4,8}$").unwrap();
+    static ref RE_PASSWORD: Regex = Regex::new(r"^([a-zA-Z0-9@*#]{8,15})$").unwrap();
 }
 
 #[derive(Serialize, Deserialize, Validate)]
@@ -47,13 +47,19 @@ async fn create(db: Db, user: Validated<Json<CreateUserData>>) -> Result<Created
 
 #[get("/users")]
 async fn list(db: Db) -> Result<Json<Vec<User>>> {
-    let users = db
-        .run(move |c| users::table.load(c))
-        .await?;
+    let users = db.run(move |c| users::table.load(c)).await?;
 
     Ok(Json(users))
 }
 
+#[get("/users/<id>")]
+async fn user(db: Db, id: i32) -> Option<Json<User>> {
+    db.run(move |c| users::table.find(id).first(c))
+        .await
+        .map(|user| Json(user))
+        .ok()
+}
+
 pub fn user_routes() -> Vec<Route> {
-    routes![create, list]
+    routes![create, list, user]
 }

@@ -4,7 +4,7 @@ use rocket::serde::{Serialize, Deserialize};
 #[serde(crate = "rocket::serde")]
 #[table_name = "users"]
 pub struct User {
-    #[serde(skip_deserializing)]
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub id: Option<i32>,
     pub username: String,
     pub email: String,

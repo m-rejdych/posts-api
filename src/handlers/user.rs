@@ -1,10 +1,10 @@
+use lazy_static::lazy_static;
+use regex::Regex;
 use rocket::response::status::Created;
 use rocket::route::Route;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket_sync_db_pools::diesel;
 use rocket_validation::{Validate, Validated};
-use regex::Regex;
-use lazy_static::lazy_static;
 
 use crate::db::Db;
 use crate::schema::user::{users, User};
@@ -45,6 +45,15 @@ async fn create(db: Db, user: Validated<Json<CreateUserData>>) -> Result<Created
     Ok(Created::new("/").body(Json(new_user)))
 }
 
+#[get("/users")]
+async fn list(db: Db) -> Result<Json<Vec<User>>> {
+    let users = db
+        .run(move |c| users::table.load(c))
+        .await?;
+
+    Ok(Json(users))
+}
+
 pub fn user_routes() -> Vec<Route> {
-    routes![create]
+    routes![create, list]
 }

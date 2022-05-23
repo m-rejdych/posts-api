@@ -1,6 +1,6 @@
 use rocket::serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Queryable, Insertable)]
+#[derive(Serialize, Deserialize, Queryable, Insertable, Identifiable)]
 #[serde(crate = "rocket::serde")]
 #[table_name = "users"]
 pub struct User {

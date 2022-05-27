@@ -13,9 +13,13 @@ mod db;
 mod handlers;
 mod schema;
 
+use handlers::{user::user_routes, post::post_routes};
+
 #[launch]
 fn rocket() -> _ {
     rocket::build()
         .register("/", catchers![validation_catcher])
         .attach(db::stage())
+        .mount("/user", user_routes())
+        .mount("/post", post_routes())
 }

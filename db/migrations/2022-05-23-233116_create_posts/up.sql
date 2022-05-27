@@ -1,0 +1,8 @@
+CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  text TEXT NOT NULL,
+  published BOOLEAN NOT NULL DEFAULT 'f',
+  user_id INT NOT NULL,
+  CONSTRAINT FK_POSTS_USERS FOREIGN KEY (user_id) REFERENCES users (id)
+);

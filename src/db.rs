@@ -2,8 +2,6 @@ use rocket::fairing::AdHoc;
 use rocket::{Build, Rocket};
 use rocket_sync_db_pools::diesel;
 
-use crate::handlers::user::user_routes;
-
 #[database("diesel")]
 pub struct Db(diesel::PgConnection);
 
@@ -23,6 +21,5 @@ pub fn stage() -> AdHoc {
         rocket
             .attach(Db::fairing())
             .attach(AdHoc::on_ignite("Diesel migrations", run_migrations))
-            .mount("/user", user_routes())
     })
 }

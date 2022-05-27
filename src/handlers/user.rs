@@ -2,7 +2,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use rocket::response::status::Created;
 use rocket::route::Route;
-use rocket::serde::{json::Json, Deserialize, Serialize};
+use rocket::serde::{json::Json, Deserialize};
 use rocket_sync_db_pools::diesel;
 use rocket_validation::{Validate, Validated};
 
@@ -17,7 +17,7 @@ lazy_static! {
     static ref RE_PASSWORD: Regex = Regex::new(r"^([a-zA-Z0-9@*#]{8,15})$").unwrap();
 }
 
-#[derive(Serialize, Deserialize, Validate)]
+#[derive(Deserialize, Validate)]
 #[serde(crate = "rocket::serde")]
 struct CreateUserData {
     #[validate(length(min = 4))]

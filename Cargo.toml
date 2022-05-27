@@ -14,3 +14,4 @@ diesel_migrations = "1.4.0"
 validator = { version = "0.14.0", features = ["derive"] }
 regex = "^1"
 lazy_static = "1.4.0"
+pwhash = "1"

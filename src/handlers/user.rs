@@ -5,6 +5,7 @@ use rocket::route::Route;
 use rocket::serde::{json::Json, Deserialize};
 use rocket_sync_db_pools::diesel;
 use rocket_validation::{Validate, Validated};
+use pwhash::bcrypt;
 
 use crate::db::Db;
 use crate::schema::user::{users, User};
@@ -30,13 +31,16 @@ struct CreateUserData {
 
 #[post("/create", data = "<user>")]
 async fn create(db: Db, user: Validated<Json<CreateUserData>>) -> Result<Created<Json<User>>> {
+    let user_data = user.0 .0;
+    let hashed_password = bcrypt::hash(user_data.password).unwrap();
+
     let new_user = db
         .run(move |c| {
             diesel::insert_into(users::table)
                 .values((
-                    users::username.eq(user.0 .0.username),
-                    users::email.eq(user.0 .0.email),
-                    users::password.eq(user.0 .0.password),
+                    users::username.eq(user_data.username),
+                    users::email.eq(user_data.email),
+                    users::password.eq(hashed_password),
                 ))
                 .get_result::<User>(c)
         })

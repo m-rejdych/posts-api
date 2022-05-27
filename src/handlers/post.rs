@@ -1,3 +1,4 @@
+use rocket::response::status::Created;
 use rocket::route::Route;
 use rocket::serde::{json::Json, Deserialize};
 use rocket_sync_db_pools::diesel;
@@ -16,16 +17,16 @@ type Result<T, E = rocket::response::Debug<diesel::result::Error>> = std::result
 #[derive(Deserialize, Validate)]
 #[serde(crate = "rocket::serde")]
 struct CreatePostData {
-    #[serde(rename = "userId")]
-    user_id: i32,
     #[validate(length(min = 5))]
     title: String,
     #[validate(length(min = 10))]
     text: String,
+    #[serde(rename = "userId")]
+    user_id: i32,
 }
 
 #[post("/create", data = "<post>")]
-async fn create(db: Db, post: Validated<Json<CreatePostData>>) -> Result<Json<Post>> {
+async fn create(db: Db, post: Validated<Json<CreatePostData>>) -> Result<Created<Json<Post>>> {
     let post_data = post.0 .0;
 
     let new_post = db
@@ -40,7 +41,7 @@ async fn create(db: Db, post: Validated<Json<CreatePostData>>) -> Result<Json<Po
         })
         .await?;
 
-    Ok(Json(new_post))
+    Ok(Created::new("/").body(Json(new_post)))
 }
 
 #[get("/posts-by-user-id/<id>")]
@@ -49,7 +50,7 @@ async fn posts_by_user_id(db: Db, id: i32) -> Result<Json<Vec<Post>>> {
         .run(move |c| {
             let user = users::table.find(id).first::<User>(c)?;
 
-            Post::belonging_to(&user).load(c)
+            Post::belonging_to(&user).load::<Post>(c)
         })
         .await?;
 

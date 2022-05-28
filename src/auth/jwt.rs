@@ -12,8 +12,8 @@ pub struct Error(&'static str);
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct Claims {
-    user_id: i32,
-    email: String,
+    pub user_id: i32,
+    pub email: String,
     exp: u64,
 }
 

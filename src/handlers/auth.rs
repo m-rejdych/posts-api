@@ -1,8 +1,8 @@
 use lazy_static::lazy_static;
 use pwhash::bcrypt;
 use regex::Regex;
-use rocket::http::CookieJar;
-use rocket::response::status::{Created, Unauthorized};
+use rocket::http::{CookieJar, Status};
+use rocket::response::status::{Created};
 use rocket::serde::{json::Json, Deserialize};
 use rocket::Route;
 use rocket::State;
@@ -21,9 +21,6 @@ lazy_static! {
 }
 
 type Result<T, E = rocket::response::Debug<diesel::result::Error>> = std::result::Result<T, E>;
-
-#[derive(Responder)]
-struct Error(String);
 
 #[derive(Deserialize, Validate)]
 #[serde(crate = "rocket::serde")]
@@ -80,7 +77,7 @@ async fn login(
     jar: &CookieJar<'_>,
     config: &State<Config>,
     user: Validated<Json<LoginData>>,
-) -> Result<Json<User>, Unauthorized<Error>> {
+) -> Result<Json<User>, Status> {
     let login_data = user.0 .0;
 
     let user = match db
@@ -92,17 +89,11 @@ async fn login(
         .await
     {
         Ok(u) => u,
-        Err(_) => {
-            return Err(Unauthorized(Some(Error(
-                "Incorrect email or password.".to_string(),
-            ))))
-        }
+        Err(_) => return Err(Status::Unauthorized),
     };
 
     if !bcrypt::verify(login_data.password, &user.password) {
-        return Err(Unauthorized(Some(Error(
-            "Incorrect email or password.".to_string(),
-        ))));
+        return Err(Status::Unauthorized);
     }
 
     let claims = Claims::new(user.id, user.email.clone());

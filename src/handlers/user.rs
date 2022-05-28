@@ -1,18 +1,11 @@
 use lazy_static::lazy_static;
-use pwhash::bcrypt;
 use regex::Regex;
-use rocket::http::CookieJar;
-use rocket::response::status::Created;
 use rocket::route::Route;
-use rocket::serde::{json::Json, Deserialize};
-use rocket::State;
-use rocket_sync_db_pools::diesel;
-use rocket_validation::{Validate, Validated};
+use rocket::serde::json::Json;
 
-use crate::auth::jwt::{Claims, Jwt};
-use crate::config::Config;
 use crate::db::Db;
 use crate::schema::user::{users, User};
+use crate::auth::jwt::Jwt;
 
 use diesel::prelude::*;
 
@@ -20,51 +13,6 @@ type Result<T, E = rocket::response::Debug<diesel::result::Error>> = std::result
 
 lazy_static! {
     static ref RE_PASSWORD: Regex = Regex::new(r"^([a-zA-Z0-9@*#]{8,15})$").unwrap();
-}
-
-#[derive(Deserialize, Validate)]
-#[serde(crate = "rocket::serde")]
-struct CreateUserData {
-    #[validate(length(min = 4))]
-    username: String,
-    #[validate(email)]
-    email: String,
-    #[validate(regex = "RE_PASSWORD")]
-    password: String,
-}
-
-#[post("/create", data = "<user>")]
-async fn create(
-    db: Db,
-    config: &State<Config>,
-    jar: &CookieJar<'_>,
-    user: Validated<Json<CreateUserData>>,
-) -> Result<Created<Json<User>>> {
-    let user_data = user.0 .0;
-    let hashed_password = bcrypt::hash(user_data.password).unwrap();
-
-    let new_user = db
-        .run(move |c| {
-            diesel::insert_into(users::table)
-                .values((
-                    users::username.eq(user_data.username),
-                    users::email.eq(user_data.email),
-                    users::password.eq(hashed_password),
-                ))
-                .get_result::<User>(c)
-        })
-        .await?;
-
-    let claims = Claims {
-        user_id: new_user.id,
-        email: new_user.email.clone(),
-        exp: jsonwebtoken::get_current_timestamp(),
-    };
-    let token = Jwt::new(claims, config.ROCKET_JWT_SECRET.as_ref());
-
-    jar.add(token.cookie());
-
-    Ok(Created::new("/").body(Json(new_user)))
 }
 
 #[get("/users")]
@@ -75,8 +23,7 @@ async fn list(db: Db) -> Result<Json<Vec<User>>> {
 }
 
 #[get("/users/<id>")]
-async fn user(db: Db, jwt: Jwt, id: i32) -> Option<Json<User>> {
-    println!("{:?}", jwt);
+async fn user(db: Db, _jwt: Jwt, id: i32) -> Option<Json<User>> {
     db.run(move |c| users::table.find(id).first(c))
         .await
         .map(|user| Json(user))
@@ -84,5 +31,5 @@ async fn user(db: Db, jwt: Jwt, id: i32) -> Option<Json<User>> {
 }
 
 pub fn user_routes() -> Vec<Route> {
-    routes![create, list, user]
+    routes![list, user]
 }

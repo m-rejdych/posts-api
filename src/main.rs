@@ -16,7 +16,7 @@ mod schema;
 mod config;
 mod auth;
 
-use handlers::{user::user_routes, post::post_routes};
+use handlers::{user::user_routes, post::post_routes, auth::auth_routes};
 
 #[launch]
 fn rocket() -> _ {
@@ -24,6 +24,7 @@ fn rocket() -> _ {
         .register("/", catchers![validation_catcher])
         .attach(AdHoc::config::<config::Config>())
         .attach(db::stage())
+        .mount("/auth", auth_routes())
         .mount("/user", user_routes())
         .mount("/post", post_routes())
 }

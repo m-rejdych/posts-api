@@ -1,4 +1,4 @@
-use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{decode, encode, get_current_timestamp, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use rocket::http::{Cookie, Status};
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::{Deserialize, Serialize};
@@ -7,14 +7,24 @@ use rocket::time::{Duration, OffsetDateTime};
 use crate::config::Config;
 
 #[derive(Debug)]
-pub struct Error(pub &'static str);
+pub struct Error(&'static str);
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(crate = "rocket::serde")]
 pub struct Claims {
-    pub user_id: i32,
-    pub email: String,
-    pub exp: u64,
+    user_id: i32,
+    email: String,
+    exp: u64,
+}
+
+impl Claims {
+    pub fn new(user_id: i32, email: String) -> Claims {
+        Claims {
+            user_id,
+            email,
+            exp: get_current_timestamp(),
+        }
+    }
 }
 
 #[derive(Debug)]

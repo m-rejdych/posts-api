@@ -82,6 +82,19 @@ async fn posts_by_user_id(db: Db, id: i32) -> Result<Json<Vec<Post>>> {
     Ok(Json(posts))
 }
 
+#[get("/self")]
+async fn self_posts(db: Db, jwt: Jwt) -> Result<Json<Vec<Post>>> {
+    let posts = db
+        .run(move |c| {
+            let user = users::table.find(jwt.claims.user_id).first::<User>(c)?;
+
+            Post::belonging_to(&user).load::<Post>(c)
+        })
+        .await?;
+
+    Ok(Json(posts))
+}
+
 pub fn post_routes() -> Vec<Route> {
-    routes![create, posts_by_user_id, publish]
+    routes![create, posts_by_user_id, publish, self_posts]
 }

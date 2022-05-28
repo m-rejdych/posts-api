@@ -16,8 +16,8 @@ lazy_static! {
     static ref RE_PASSWORD: Regex = Regex::new(r"^([a-zA-Z0-9@*#]{8,15})$").unwrap();
 }
 
-#[get("/")]
-async fn me(db: Db, jwt: Jwt) -> Result<Json<User>, Unauthorized<&'static str>> {
+#[get("/self")]
+async fn self_user(db: Db, jwt: Jwt) -> Result<Json<User>, Unauthorized<&'static str>> {
     match db
         .run(move |c| users::table.find(jwt.claims.user_id).first(c))
         .await
@@ -43,5 +43,5 @@ async fn user(db: Db, _jwt: Jwt, id: i32) -> Option<Json<User>> {
 }
 
 pub fn user_routes() -> Vec<Route> {
-    routes![list, user, me]
+    routes![list, user, self_user]
 }

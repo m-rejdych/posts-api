@@ -1,19 +1,18 @@
 use lazy_static::lazy_static;
 use pwhash::bcrypt;
 use regex::Regex;
-use rocket::time::{OffsetDateTime, Duration};
-use rocket::http::{Cookie, CookieJar, private::cookie::Expiration};
+use rocket::http::CookieJar;
 use rocket::response::status::Created;
 use rocket::route::Route;
-use rocket::serde::{json::Json, Deserialize, Serialize};
+use rocket::serde::{json::Json, Deserialize};
 use rocket::State;
 use rocket_sync_db_pools::diesel;
 use rocket_validation::{Validate, Validated};
 
+use crate::auth::jwt::{Claims, Jwt};
 use crate::config::Config;
 use crate::db::Db;
 use crate::schema::user::{users, User};
-use crate::auth::jwt::{Jwt, Claims};
 
 use diesel::prelude::*;
 
@@ -57,10 +56,11 @@ async fn create(
         .await?;
 
     let claims = Claims {
-        user_id: &new_user.id,
-        email: &new_user.email,
+        user_id: new_user.id,
+        email: new_user.email.clone(),
+        exp: jsonwebtoken::get_current_timestamp(),
     };
-    let token = Jwt::new(&claims, config.ROCKET_JWT_SECRET.as_ref());
+    let token = Jwt::new(claims, config.ROCKET_JWT_SECRET.as_ref());
 
     jar.add(token.cookie());
 
@@ -75,7 +75,8 @@ async fn list(db: Db) -> Result<Json<Vec<User>>> {
 }
 
 #[get("/users/<id>")]
-async fn user(db: Db, id: i32) -> Option<Json<User>> {
+async fn user(db: Db, jwt: Jwt, id: i32) -> Option<Json<User>> {
+    println!("{:?}", jwt);
     db.run(move |c| users::table.find(id).first(c))
         .await
         .map(|user| Json(user))

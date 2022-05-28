@@ -18,7 +18,7 @@ type Result<T, E = rocket::response::Debug<diesel::result::Error>> = std::result
 
 #[derive(Deserialize, Validate)]
 #[serde(crate = "rocket::serde")]
-struct CreatePostData {
+struct PostData {
     #[validate(length(min = 5))]
     title: String,
     #[validate(length(min = 10))]
@@ -26,11 +26,7 @@ struct CreatePostData {
 }
 
 #[post("/create", data = "<post>")]
-async fn create(
-    db: Db,
-    jwt: Jwt,
-    post: Validated<Json<CreatePostData>>,
-) -> Result<Created<Json<Post>>> {
+async fn create(db: Db, jwt: Jwt, post: Validated<Json<PostData>>) -> Result<Created<Json<Post>>> {
     let post_data = post.0 .0;
 
     let new_post = db
@@ -63,10 +59,41 @@ async fn publish(db: Db, jwt: Jwt, id: i32) -> Result<Json<Post>, Status> {
     };
 
     if post.user_id != jwt.claims.user_id {
-        return Err(Status::Unauthorized);
+        return Err(Status::Forbidden);
     }
 
     Ok(post)
+}
+
+#[put("/<id>/edit", data = "<post_data>")]
+async fn edit(
+    db: Db,
+    jwt: Jwt,
+    id: i32,
+    post_data: Validated<Json<PostData>>,
+) -> Result<Json<Post>, Status> {
+    let post_data = post_data.0 .0;
+
+    match db
+        .run(move |c| {
+            let post = posts::table
+                .find(id)
+                .filter(posts::user_id.eq(jwt.claims.user_id))
+                .first::<Post>(c)?;
+
+            diesel::update(&post)
+                .set((
+                    posts::title.eq(post_data.title),
+                    posts::text.eq(post_data.text),
+                ))
+                .get_result::<Post>(c)
+        })
+        .await
+        .map_err(|_| Status::Forbidden)
+    {
+        Ok(post) => Ok(Json(post)),
+        Err(error) => Err(error),
+    }
 }
 
 #[get("/posts-by-user-id/<id>")]
@@ -96,5 +123,5 @@ async fn self_posts(db: Db, jwt: Jwt) -> Result<Json<Vec<Post>>> {
 }
 
 pub fn post_routes() -> Vec<Route> {
-    routes![create, posts_by_user_id, publish, self_posts]
+    routes![create, posts_by_user_id, publish, self_posts, edit]
 }
